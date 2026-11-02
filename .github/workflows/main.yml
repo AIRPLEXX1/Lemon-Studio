@@ -26,8 +26,20 @@ jobs:
           $env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin"
           cargo build -p os-app --release
 
-      - name: Upload EXE
+      - name: Package application and Visual C++ libraries
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package
+          Copy-Item target/release/lemonstudio.exe package/
+          $runtime = Get-ChildItem "$env:WINDIR\System32" -File |
+            Where-Object { $_.Name -match '^(msvcp140.*|vcruntime140.*|concrt140)\.dll$' }
+          if (-not ($runtime | Where-Object { $_.Name -eq "msvcp140.dll" })) {
+            throw "MSVCP140.dll not found"
+          }
+          Copy-Item $runtime.FullName package/
+
+      - name: Upload Windows package
         uses: actions/upload-artifact@v4
         with:
           name: Lemon-Studio-Windows
-          path: target/release/lemonstudio.exe
+          path: package/
